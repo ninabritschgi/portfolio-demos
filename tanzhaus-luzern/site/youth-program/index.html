@@ -368,7 +368,8 @@ a[href^="tel:"] {
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="strict-origin-when-cross-origin">
 <style id="portfolio-demo-styles">
   .logo-block { visibility: visible !important; }
-  html.demo-menu-open, body.demo-menu-open { overflow: hidden !important; }
+  html.demo-menu-open, body.demo-menu-open,
+  html.demo-popup-open, body.demo-popup-open { overflow: hidden !important; }
   .hamburger-navigation-open-state.is-demo-open {
     display: flex !important;
     visibility: visible !important;
@@ -703,6 +704,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const menu = document.querySelector('.hamburger-navigation-open-state');
   const openButton = document.querySelector('.button-hamburger');
   const closeButton = document.querySelector('.button-hamburger-menu-open');
+  const logoBlock = document.querySelector('.logo-block');
+  const trialPopup = document.querySelector('.trial-button-wrapper .popup');
+  let trialReturnFocus = null;
 
   function setMenu(open) {
     if (!menu) return;
@@ -737,6 +741,93 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     menu.querySelectorAll('a[href]:not([href="#"])').forEach(function (link) {
       link.addEventListener('click', function () { setMenu(false); });
+    });
+  }
+
+  // Match the original scroll-linked Webflow logo animation without loading
+  // Webflow's interaction engine. Values are sampled from the live animation.
+  const logoScaleStops = [
+    [0, 1],
+    [50, .9243],
+    [100, .8135],
+    [150, .7046],
+    [200, .627],
+    [300, .5228],
+    [400, .4553],
+    [500, .4112],
+    [700, .3825],
+    [1000, .375]
+  ];
+
+  function logoScaleAt(scrollPosition) {
+    const y = Math.max(0, scrollPosition);
+    for (let index = 1; index < logoScaleStops.length; index += 1) {
+      const previous = logoScaleStops[index - 1];
+      const current = logoScaleStops[index];
+      if (y <= current[0]) {
+        const progress = (y - previous[0]) / (current[0] - previous[0]);
+        return previous[1] + (current[1] - previous[1]) * progress;
+      }
+    }
+    return logoScaleStops[logoScaleStops.length - 1][1];
+  }
+
+  let logoTicking = false;
+  function updateLogoScale() {
+    logoTicking = false;
+    if (!logoBlock) return;
+    if (!window.matchMedia('(min-width: 992px)').matches) {
+      logoBlock.style.removeProperty('transform');
+      return;
+    }
+    const scale = logoScaleAt(window.scrollY || 0);
+    logoBlock.style.transform = 'translate3d(0,0,0) scale(' + scale.toFixed(4) + ')';
+  }
+  function requestLogoScaleUpdate() {
+    if (logoTicking) return;
+    logoTicking = true;
+    requestAnimationFrame(updateLogoScale);
+  }
+  window.addEventListener('scroll', requestLogoScaleUpdate, { passive: true });
+  window.addEventListener('resize', requestLogoScaleUpdate);
+  updateLogoScale();
+
+  function setTrialPopup(open, trigger) {
+    if (!trialPopup) return;
+    if (open) {
+      trialReturnFocus = trigger || document.activeElement;
+      setMenu(false);
+    }
+    trialPopup.classList.toggle('is-demo-open', open);
+    trialPopup.setAttribute('aria-hidden', String(!open));
+    document.documentElement.classList.toggle('demo-popup-open', open);
+    document.body.classList.toggle('demo-popup-open', open);
+    if (open) {
+      const close = trialPopup.querySelector('.button-popup-close');
+      if (close) close.focus({ preventScroll: true });
+    } else if (trialReturnFocus && typeof trialReturnFocus.focus === 'function') {
+      trialReturnFocus.focus({ preventScroll: true });
+      trialReturnFocus = null;
+    }
+  }
+
+  if (trialPopup) {
+    trialPopup.setAttribute('role', 'dialog');
+    trialPopup.setAttribute('aria-modal', 'true');
+    trialPopup.setAttribute('aria-hidden', 'true');
+    document.querySelectorAll('.button-nav-cta, .trial-button-wrapper > .button-medium').forEach(function (trigger) {
+      trigger.addEventListener('click', function (event) {
+        event.preventDefault();
+        setTrialPopup(true, trigger);
+      });
+    });
+    const trialClose = trialPopup.querySelector('.button-popup-close');
+    if (trialClose) trialClose.addEventListener('click', function (event) {
+      event.preventDefault();
+      setTrialPopup(false);
+    });
+    trialPopup.addEventListener('click', function (event) {
+      if (event.target === trialPopup) setTrialPopup(false);
     });
   }
 
@@ -783,6 +874,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
     setMenu(false);
+    setTrialPopup(false);
     document.querySelectorAll('.popup.is-demo-open').forEach(function (popup) {
       popup.classList.remove('is-demo-open');
     });
