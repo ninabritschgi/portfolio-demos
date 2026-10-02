@@ -1312,7 +1312,8 @@ async function setView(view) {
 
   // ── Event listeners ─────────────────────────────────────
   $$('view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
       const view = btn.getAttribute('data-sn-view');
       if (view && view !== currentView) setView(view);
     });
@@ -1320,7 +1321,8 @@ async function setView(view) {
   });
 
   $$('week-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
       const week = parseInt(btn.getAttribute('data-sn-week'));
       if (!isNaN(week) && week !== currentWeekIndex) setWeek(week);
     });
@@ -1350,11 +1352,6 @@ async function setView(view) {
   initTabLabels();
   fetchAllData();
 
-  // Keep the archived demo self-contained: controls work, external links do not navigate.
-  document.addEventListener('click', (event) => {
-    const link = event.target.closest('a');
-    if (link) event.preventDefault();
-  });
 })();
 </script>
 
